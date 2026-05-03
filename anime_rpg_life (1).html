@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARISE — Life RPG System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --bg-deep: #020408;
+    --bg-dark: #060d18;
+    --bg-card: rgba(8, 20, 40, 0.7);
+    --cyan: #00f5ff;
+    --cyan-dim: rgba(0,245,255,0.15);
+    --cyan-glow: rgba(0,245,255,0.4);
+    --blue: #0088ff;
+    --blue-dim: rgba(0,136,255,0.1);
+    --purple: #7b2fff;
+    --purple-dim: rgba(123,47,255,0.2);
+    --gold: #ffd700;
+    --gold-dim: rgba(255,215,0,0.15);
+    --red: #ff2244;
+    --red-dim: rgba(255,34,68,0.15);
+    --green: #00ff88;
+    --green-dim: rgba(0,255,136,0.15);
+    --text: #c8e8ff;
+    --text-dim: rgba(200,232,255,0.5);
+    --border: rgba(0,245,255,0.2);
+    --border-glow: rgba(0,245,255,0.6);
+    --nav-h: 70px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--bg-deep);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ====== ANIMATED BG ====== */
+  #bg-canvas {
+    position: fixed; inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ====== MAIN LAYOUT ====== */
+  #app {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ====== HEADER ====== */
+  #header {
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    background: rgba(2,4,8,0.8);
+    backdrop-filter: blur(20px);
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--cyan);
+    text-shadow: 0 0 20px var(--cyan-glow), 0 0 40px rgba(0,245,255,0.2);
+    letter-spacing: 4px;
+  }
+
+  .logo span { color: var(--text-dim); font-size: 0.7rem; display: block; letter-spacing: 6px; margin-top: -4px; }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .level-badge {
+    font-family: 'Orbitron', monospace;
+    background: linear-gradient(135deg, rgba(0,245,255,0.1), rgba(123,47,255,0.1));
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.75rem;
+    color: var(--cyan);
+    text-align: center;
+    min-width: 80px;
+  }
+  .level-badge .lv-num { font-size: 1.2rem; font-weight: 700; display: block; line-height: 1; }
+
+  .rank-badge {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.6rem;
+    font-weight: 900;
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: 1px solid;
+    text-shadow: 0 0 10px currentColor;
+    box-shadow: 0 0 12px currentColor;
+  }
+
+  /* XP bar in header */
+  .xp-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 140px;
+  }
+  .xp-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    display: flex;
+    justify-content: space-between;
+  }
+  .xp-bar-outer {
+    height: 6px;
+    background: rgba(0,245,255,0.1);
+    border-radius: 3px;
+    border: 1px solid rgba(0,245,255,0.2);
+    overflow: hidden;
+  }
+  .xp-bar-inner {
+    height: 100%;
+    background: linear-gradient(90deg, var(--blue), var(--cyan));
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 0 8px var(--cyan-glow);
+    position: relative;
+  }
+  .xp-bar-inner::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: white;
+    border-radius: 2px;
+    box-shadow: 0 0 6px white;
+    animation: xp-pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes xp-pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* ====== SCREENS ====== */
+  #screens {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .screen {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 20px 16px 100px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateY(10px);
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateY(0);
+  }
+  .screen::-webkit-scrollbar { width: 4px; }
+  .screen::-webkit-scrollbar-track { background: transparent; }
+  .screen::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ====== SECTION TITLE ====== */
+  .section-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 4px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ====== QUEST CARDS ====== */
+  .quests-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .quest-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+    animation: cardIn 0.4s cubic-bezier(0.4,0,0.2,1) both;
+  }
+  @keyframes cardIn {
+    from { opacity:0; transform: translateY(20px) scale(0.97); }
+    to   { opacity:1; transform: translateY(0) scale(1); }
+  }
+
+  .quest-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 14px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    background: radial-gradient(ellipse at 50% 0%, var(--cyan-dim), transparent 70%);
+  }
+  .quest-card:hover { transform: translateY(-3px); border-color: var(--cyan); box-shadow: 0 0 20px rgba(0,245,255,0.15), 0 8px 32px rgba(0,0,0,0.4); }
+  .quest-card:hover::before { opacity: 1; }
+
+  .quest-card .glow-line {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .quest-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .quest-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+  }
+
+  .quest-xp {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gold);
+    background: var(--gold-dim);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 6px;
+    padding: 3px 8px;
+    white-space: nowrap;
+    text-shadow: 0 0 8px var(--gold);
+  }
+
+  .quest-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .cat-badge {
+    font-size: 0.65rem;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid;
+    text-transform: uppercase;
+  }
+
+  .quest-timer {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .quest-timer.urgent { color: var(--red); animation: blink 1s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .timer-bar-outer {
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .timer-bar-inner {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s linear, background 0.5s;
+  }
+
+  .quest-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .btn {
+    flex: 1;
+    padding: 9px 0;
+    border: 1px solid;
+    border-radius: 8px;
+    background: transparent;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .btn:active::after { opacity: 0.1; }
+
+  .btn-complete {
+    color: var(--green);
+    border-color: rgba(0,255,136,0.4);
+    background: rgba(0,255,136,0.05);
+  }
+  .btn-complete:hover { background: rgba(0,255,136,0.12); border-color: var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.3); }
+
+  .btn-fail {
+    color: var(--red);
+    border-color: rgba(255,34,68,0.3);
+    background: rgba(255,34,68,0.05);
+  }
+  .btn-fail:hover { background: rgba(255,34,68,0.1); border-color: var(--red); box-shadow: 0 0 12px rgba(255,34,68,0.3); }
+
+  /* ====== BOTTOM NAV ====== */
+  #nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 100;
+    height: var(--nav-h);
+    background: rgba(2,4,8,0.92);
+    backdrop-filter: blur(30px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 10px;
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 20px;
+    cursor: pointer;
+    border-radius: 10px;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .nav-item.active .nav-icon { color: var(--cyan); filter: drop-shadow(0 0 6px var(--cyan)); }
+  .nav-item.active .nav-label { color: var(--cyan); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    bottom: -8px; left: 50%;
+    transform: translateX(-50%);
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  .nav-icon { font-size: 1.4rem; color: var(--text-dim); transition: all 0.2s; }
+  .nav-label { font-family: 'Share Tech Mono', monospace; font-size: 0.6rem; color: var(--text-dim); letter-spacing: 1px; transition: all 0.2s; }
+
+  /* ====== FAB ====== */
+  #fab {
+    position: fixed;
+    bottom: 90px; right: 20px;
+    z-index: 200;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--cyan));
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    color: var(--bg-deep);
+    font-weight: 900;
+    box-shadow: 0 0 20px var(--cyan-glow), 0 4px 16px rgba(0,0,0,0.5);
+    animation: fab-pulse 2s ease-in-out infinite;
+    transition: all 0.2s;
+  }
+  #fab:hover { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 30px var(--cyan-glow); }
+  @keyframes fab-pulse {
+    0%,100% { box-shadow: 0 0 20px var(--cyan-glow), 0 4px 16px rgba(0,0,0,0.5); }
+    50% { box-shadow: 0 0 35px var(--cyan-glow), 0 4px 16px rgba(0,0,0,0.5); }
+  }
+
+  /* ====== MODAL ====== */
+  #modal-overlay {
+    position: fixed; inset: 0;
+    z-index: 300;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  #modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  #modal {
+    background: linear-gradient(180deg, rgba(10,22,44,0.98), rgba(4,10,22,0.99));
+    border: 1px solid var(--border);
+    border-bottom: none;
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 40px;
+    width: 100%;
+    max-width: 480px;
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    box-shadow: 0 -10px 60px rgba(0,245,255,0.1);
+  }
+  #modal-overlay.open #modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: rgba(200,232,255,0.2);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--cyan);
+    text-align: center;
+    margin-bottom: 20px;
+    letter-spacing: 3px;
+    text-shadow: 0 0 12px var(--cyan-glow);
+  }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .form-input {
+    width: 100%;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .form-input:focus {
+    border-color: var(--cyan);
+    background: rgba(0,245,255,0.07);
+    box-shadow: 0 0 12px rgba(0,245,255,0.15);
+  }
+  .form-input option { background: #060d18; }
+
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, rgba(0,136,255,0.2), rgba(0,245,255,0.15));
+    border: 1px solid var(--cyan);
+    border-radius: 10px;
+    color: var(--cyan);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 6px;
+    box-shadow: 0 0 15px rgba(0,245,255,0.2);
+  }
+  .btn-submit:hover { background: rgba(0,245,255,0.15); box-shadow: 0 0 25px rgba(0,245,255,0.35); }
+
+  /* ====== STATS SCREEN ====== */
+  .stats-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .stat-overview {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-tile {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    transition: all 0.2s;
+  }
+  .stat-tile:hover { border-color: var(--cyan); box-shadow: 0 0 15px rgba(0,245,255,0.1); }
+  .stat-tile .t-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--cyan);
+    text-shadow: 0 0 10px var(--cyan-glow);
+    display: block;
+  }
+  .stat-tile .t-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+  }
+
+  .chart-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+  .chart-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+  }
+  #stats-canvas { width: 100%; display: block; }
+
+  .cat-list { display: flex; flex-direction: column; gap: 10px; }
+  .cat-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .cat-name {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    min-width: 80px;
+  }
+  .cat-prog-outer {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .cat-prog-inner {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+  }
+  .cat-count {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    min-width: 24px;
+    text-align: right;
+  }
+
+  /* ====== PROFILE SCREEN ====== */
+  .profile-wrap { display: flex; flex-direction: column; gap: 20px; }
+
+  .profile-hero {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .profile-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 80px;
+    background: linear-gradient(180deg, rgba(0,245,255,0.08), transparent);
+  }
+
+  .avatar-wrap {
+    position: relative;
+    width: 90px; height: 90px;
+    cursor: pointer;
+  }
+  .avatar-img {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 20px var(--cyan-glow);
+  }
+  .avatar-placeholder {
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(0,136,255,0.2), rgba(0,245,255,0.1));
+    border: 2px solid var(--cyan);
+    box-shadow: 0 0 20px var(--cyan-glow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+  }
+  .avatar-edit-btn {
+    position: absolute;
+    bottom: 0; right: 0;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: var(--cyan);
+    color: var(--bg-deep);
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 8px var(--cyan-glow);
+  }
+
+  .profile-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+    text-align: center;
+  }
+  .profile-sub {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-align: center;
+  }
+
+  .rank-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .rank-big {
+    font-family: 'Orbitron', monospace;
+    font-size: 3rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .rank-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: var(--text-dim);
+  }
+
+  .profile-edit-card {
+    background: var(--bg-card);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+  }
+
+  /* ====== LEVEL UP OVERLAY ====== */
+  #levelup-overlay {
+    position: fixed; inset: 0;
+    z-index: 500;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+  }
+  #levelup-overlay.show { animation: lvup-anim 2.5s forwards; }
+  @keyframes lvup-anim {
+    0%   { opacity:0; }
+    15%  { opacity:1; }
+    70%  { opacity:1; }
+    100% { opacity:0; }
+  }
+
+  .lvup-burst {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,245,255,0.3) 0%, transparent 70%);
+    animation: burst 2.5s forwards;
+  }
+  @keyframes burst {
+    0%   { transform:scale(0); opacity:0; }
+    20%  { transform:scale(1.5); opacity:1; }
+    100% { transform:scale(3); opacity:0; }
+  }
+
+  .lvup-text {
+    position: relative;
+    text-align: center;
+    font-family: 'Orbitron', monospace;
+  }
+  .lvup-text .top { font-size: 0.8rem; letter-spacing: 6px; color: var(--cyan); margin-bottom: 8px; }
+  .lvup-text .num {
+    font-size: 5rem;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 0 30px var(--cyan), 0 0 60px var(--cyan-glow);
+    animation: lvup-num 2.5s forwards;
+  }
+  @keyframes lvup-num {
+    0%   { transform:scale(0) rotate(-10deg); }
+    20%  { transform:scale(1.2) rotate(3deg); }
+    35%  { transform:scale(1) rotate(0); }
+    85%  { transform:scale(1); }
+    100% { transform:scale(0.8); }
+  }
+  .lvup-text .sub { font-size: 0.75rem; letter-spacing: 4px; color: var(--text-dim); margin-top: 6px; }
+
+  /* ====== XP POP ====== */
+  .xp-pop {
+    position: fixed;
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--gold);
+    text-shadow: 0 0 10px var(--gold);
+    pointer-events: none;
+    z-index: 400;
+    animation: xp-pop-anim 1.2s forwards;
+  }
+  @keyframes xp-pop-anim {
+    0%   { opacity:1; transform:translateY(0) scale(1); }
+    60%  { opacity:1; transform:translateY(-40px) scale(1.2); }
+    100% { opacity:0; transform:translateY(-80px) scale(0.8); }
+  }
+
+  /* ====== EMPTY STATE ====== */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    opacity: 0.5;
+  }
+  .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-family: 'Share Tech Mono', monospace; font-size: 0.75rem; letter-spacing: 2px; color: var(--text-dim); }
+
+  /* ====== CATEGORY COLORS ====== */
+  .cat-mind      { color: #7b2fff; border-color: rgba(123,47,255,0.5); background: rgba(123,47,255,0.1); }
+  .cat-body      { color: #ff6b35; border-color: rgba(255,107,53,0.5); background: rgba(255,107,53,0.08); }
+  .cat-skills    { color: #00f5ff; border-color: rgba(0,245,255,0.4); background: rgba(0,245,255,0.08); }
+  .cat-discipline{ color: #ffd700; border-color: rgba(255,215,0,0.4); background: rgba(255,215,0,0.08); }
+  .cat-personal  { color: #ff2244; border-color: rgba(255,34,68,0.4); background: rgba(255,34,68,0.08); }
+  .cat-social    { color: #00ff88; border-color: rgba(0,255,136,0.4); background: rgba(0,255,136,0.08); }
+
+  .glow-mind      { background: linear-gradient(90deg, #7b2fff, #a06fff); }
+  .glow-body      { background: linear-gradient(90deg, #ff6b35, #ff9a35); }
+  .glow-skills    { background: linear-gradient(90deg, #0088ff, #00f5ff); }
+  .glow-discipline{ background: linear-gradient(90deg, #b8860b, #ffd700); }
+  .glow-personal  { background: linear-gradient(90deg, #cc0033, #ff2244); }
+  .glow-social    { background: linear-gradient(90deg, #00aa55, #00ff88); }
+
+  /* close btn */
+  .modal-close {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .modal-close:hover { background: rgba(255,34,68,0.15); border-color: var(--red); color: var(--red); }
+
+  #modal { position: relative; }
+
+  /* hidden file input */
+  #avatar-input { display: none; }
+
+  /* ====== SCAN LINE EFFECT ====== */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 1000;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div id="app">
+  <!-- HEADER -->
+  <div id="header">
+    <div class="logo">ARISE<span>LIFE SYSTEM</span></div>
+    <div class="header-right">
+      <div class="xp-wrap">
+        <div class="xp-label">
+          <span>XP</span>
+          <span id="xp-text">0 / 50</span>
+        </div>
+        <div class="xp-bar-outer">
+          <div class="xp-bar-inner" id="xp-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="level-badge">
+        LV<span class="lv-num" id="level-num">1</span>
+      </div>
+      <div class="rank-badge" id="rank-badge" style="color:#aaa;border-color:#aaa;box-shadow:0 0 8px #aaa">E</div>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div id="screens">
+    <!-- QUESTS -->
+    <div class="screen active" id="screen-quests">
+      <div class="section-title">ACTIVE QUESTS</div>
+      <div class="quests-grid" id="quests-grid"></div>
+    </div>
+
+    <!-- STATS -->
+    <div class="screen" id="screen-stats">
+      <div class="section-title">STATISTICS</div>
+      <div class="stats-wrap">
+        <div class="stat-overview">
+          <div class="stat-tile">
+            <span class="t-num" id="stat-total">0</span>
+            <span class="t-label">COMPLETED</span>
+          </div>
+          <div class="stat-tile">
+            <span class="t-num" id="stat-failed">0</span>
+            <span class="t-label">FAILED</span>
+          </div>
+          <div class="stat-tile">
+            <span class="t-num" id="stat-streak">0</span>
+            <span class="t-label">STREAK</span>
+          </div>
+          <div class="stat-tile">
+            <span class="t-num" id="stat-total-xp">0</span>
+            <span class="t-label">TOTAL XP</span>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">CATEGORY BREAKDOWN</div>
+          <div class="cat-list" id="cat-list"></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">PERFORMANCE CHART</div>
+          <canvas id="stats-canvas" height="160"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="screen" id="screen-profile">
+      <div class="section-title">HUNTER PROFILE</div>
+      <div class="profile-wrap">
+        <div class="profile-hero">
+          <div class="avatar-wrap" onclick="document.getElementById('avatar-input').click()">
+            <div id="avatar-display" class="avatar-placeholder">⚔️</div>
+            <div class="avatar-edit-btn">✎</div>
+          </div>
+          <input type="file" id="avatar-input" accept="image/*">
+          <div>
+            <div class="profile-name" id="profile-name-display">UNKNOWN HUNTER</div>
+            <div class="profile-sub" id="profile-sub-display">— UNRANKED —</div>
+          </div>
+          <div class="rank-display">
+            <div class="rank-big" id="rank-big" style="color:#aaa;text-shadow:0 0 20px #aaa">E</div>
+            <div class="rank-label">CURRENT RANK</div>
+          </div>
+        </div>
+
+        <div class="profile-edit-card">
+          <div class="section-title" style="margin-bottom:14px">EDIT PROFILE</div>
+          <div class="form-group">
+            <label class="form-label">HUNTER NAME</label>
+            <input class="form-input" type="text" id="p-name" placeholder="Enter your name">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">AGE</label>
+              <input class="form-input" type="number" id="p-age" placeholder="Age" min="1" max="120">
+            </div>
+            <div class="form-group">
+              <label class="form-label">GENDER</label>
+              <select class="form-input" id="p-gender">
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn-submit" onclick="saveProfile()">SAVE PROFILE</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav id="nav">
+    <div class="nav-item active" onclick="switchScreen('quests', this)">
+      <div class="nav-icon">⚔</div>
+      <div class="nav-label">QUESTS</div>
+    </div>
+    <div class="nav-item" onclick="switchScreen('stats', this)">
+      <div class="nav-icon">📊</div>
+      <div class="nav-label">STATS</div>
+    </div>
+    <div class="nav-item" onclick="switchScreen('profile', this)">
+      <div class="nav-icon">👤</div>
+      <div class="nav-label">PROFILE</div>
+    </div>
+  </nav>
+
+  <!-- FAB -->
+  <button id="fab" onclick="openModal()">+</button>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div id="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-handle"></div>
+    <div class="modal-title">NEW QUEST</div>
+    <div class="form-group">
+      <label class="form-label">QUEST NAME</label>
+      <input class="form-input" type="text" id="q-name" placeholder="Enter quest name...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">XP REWARD</label>
+        <input class="form-input" type="number" id="q-xp" placeholder="e.g. 30" min="1" max="999">
+      </div>
+      <div class="form-group">
+        <label class="form-label">CATEGORY</label>
+        <select class="form-input" id="q-cat">
+          <option value="Mind">Mind</option>
+          <option value="Body">Body</option>
+          <option value="Skills">Skills</option>
+          <option value="Discipline">Discipline</option>
+          <option value="Personal">Personal</option>
+          <option value="Social">Social</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">DURATION</label>
+        <input class="form-input" type="number" id="q-time" placeholder="e.g. 30" min="1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">UNIT</label>
+        <select class="form-input" id="q-unit">
+          <option value="60">Minutes</option>
+          <option value="1">Seconds</option>
+          <option value="3600">Hours</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-submit" onclick="submitQuest()">DEPLOY QUEST</button>
+  </div>
+</div>
+
+<!-- LEVEL UP OVERLAY -->
+<div id="levelup-overlay">
+  <div class="lvup-burst"></div>
+  <div class="lvup-text">
+    <div class="top">LEVEL UP</div>
+    <div class="num" id="lvup-num">2</div>
+    <div class="sub">POWER INCREASING</div>
+  </div>
+</div>
+
+<script>
+// ====== STATE ======
+let state = {
+  xp: 0, level: 1, totalXP: 0,
+  completed: 0, failed: 0, streak: 0,
+  cats: { Mind:0, Body:0, Skills:0, Discipline:0, Personal:0, Social:0 },
+  profile: { name:'', age:'', gender:'', avatar:'' }
+};
+let quests = [];
+let questIdCounter = 0;
+
+const RANKS = [
+  {min:1,  max:4,  rank:'E', color:'#aaaaaa'},
+  {min:5,  max:9,  rank:'D', color:'#4fc3f7'},
+  {min:10, max:14, rank:'C', color:'#66bb6a'},
+  {min:15, max:19, rank:'B', color:'#ab47bc'},
+  {min:20, max:24, rank:'A', color:'#ffa726'},
+  {min:25, max:29, rank:'S', color:'#ffd700'},
+  {min:30, max:999,rank:'SSS',color:'#ff2244'},
+];
+
+function getRank(level) {
+  return RANKS.find(r => level >= r.min && level <= r.max) || RANKS[RANKS.length-1];
+}
+
+function xpNeeded(level) { return level * 50; }
+
+// ====== LOAD/SAVE ======
+function loadState() {
+  try {
+    const s = localStorage.getItem('arise_state');
+    if (s) state = { ...state, ...JSON.parse(s) };
+    const q = localStorage.getItem('arise_quests');
+    if (q) {
+      quests = JSON.parse(q);
+      questIdCounter = quests.reduce((m,q) => Math.max(m,q.id), 0);
+    }
+  } catch(e) {}
+}
+function saveState() {
+  localStorage.setItem('arise_state', JSON.stringify(state));
+  localStorage.setItem('arise_quests', JSON.stringify(quests.map(q => ({
+    id: q.id, name: q.name, xp: q.xp, cat: q.cat,
+    totalSecs: q.totalSecs, remainSecs: q.remainSecs
+  }))));
+}
+
+// ====== BG CANVAS ======
+(function initBg() {
+  const c = document.getElementById('bg-canvas');
+  const ctx = c.getContext('2d');
+  let W, H, particles = [];
+
+  function resize() {
+    W = c.width = window.innerWidth;
+    H = c.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < 60; i++) {
+    particles.push({
+      x: Math.random()*2000, y: Math.random()*2000,
+      r: Math.random()*1.5 + 0.3,
+      a: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.3 + 0.05,
+      opacity: Math.random() * 0.6 + 0.1
+    });
+  }
+
+  let frame = 0;
+  function draw() {
+    requestAnimationFrame(draw);
+    frame++;
+    ctx.clearRect(0,0,W,H);
+
+    // Gradient bg
+    const g = ctx.createRadialGradient(W*0.3,H*0.2,0, W*0.3,H*0.2,H*0.9);
+    g.addColorStop(0, 'rgba(0,30,60,1)');
+    g.addColorStop(0.5, 'rgba(2,8,18,1)');
+    g.addColorStop(1, 'rgba(0,2,6,1)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    // Grid
+    ctx.strokeStyle = 'rgba(0,245,255,0.03)';
+    ctx.lineWidth = 1;
+    const gs = 60;
+    for (let x=0; x<W+gs; x+=gs) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
+    for (let y=0; y<H+gs; y+=gs) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+    // Stars
+    particles.forEach(p => {
+      p.a += p.speed * 0.01;
+      const pulse = Math.sin(frame * 0.02 + p.a) * 0.3 + 0.7;
+      ctx.beginPath();
+      ctx.arc(p.x % W, p.y % H, p.r, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(0,245,255,${p.opacity * pulse})`;
+      ctx.fill();
+    });
+
+    // Nebula
+    const nb = ctx.createRadialGradient(W*0.8, H*0.1, 0, W*0.8, H*0.1, H*0.4);
+    nb.addColorStop(0, 'rgba(123,47,255,0.05)');
+    nb.addColorStop(1, 'transparent');
+    ctx.fillStyle = nb;
+    ctx.fillRect(0,0,W,H);
+  }
+  draw();
+})();
+
+// ====== UI UPDATE ======
+function updateHeader() {
+  const needed = xpNeeded(state.level);
+  const pct = Math.min(100, (state.xp / needed) * 100);
+  document.getElementById('xp-bar').style.width = pct + '%';
+  document.getElementById('xp-text').textContent = `${state.xp} / ${needed}`;
+  document.getElementById('level-num').textContent = state.level;
+  const r = getRank(state.level);
+  const rb = document.getElementById('rank-badge');
+  rb.textContent = r.rank;
+  rb.style.color = r.color;
+  rb.style.borderColor = r.color;
+  rb.style.boxShadow = `0 0 12px ${r.color}`;
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = state.completed;
+  document.getElementById('stat-failed').textContent = state.failed;
+  document.getElementById('stat-streak').textContent = state.streak;
+  document.getElementById('stat-total-xp').textContent = state.totalXP;
+  renderCatList();
+  renderChart();
+}
+
+// ====== CATEGORY COLORS ======
+const CAT_COLORS = {
+  Mind: '#7b2fff', Body: '#ff6b35', Skills: '#00f5ff',
+  Discipline: '#ffd700', Personal: '#ff2244', Social: '#00ff88'
+};
+
+function renderCatList() {
+  const cats = state.cats;
+  const max = Math.max(1, ...Object.values(cats));
+  const el = document.getElementById('cat-list');
+  el.innerHTML = Object.entries(cats).map(([k,v]) => `
+    <div class="cat-row">
+      <span class="cat-name" style="color:${CAT_COLORS[k]}">${k.toUpperCase()}</span>
+      <div class="cat-prog-outer">
+        <div class="cat-prog-inner" style="width:${(v/max*100).toFixed(1)}%;background:${CAT_COLORS[k]};box-shadow:0 0 6px ${CAT_COLORS[k]}"></div>
+      </div>
+      <span class="cat-count" style="color:${CAT_COLORS[k]}">${v}</span>
+    </div>
+  `).join('');
+}
+
+function renderChart() {
+  const canvas = document.getElementById('stats-canvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.offsetWidth;
+  const H = 160;
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+
+  ctx.clearRect(0,0,W,H);
+
+  const cats = Object.entries(state.cats);
+  const max = Math.max(1, ...cats.map(c=>c[1]));
+  const barW = Math.floor((W - 40) / cats.length) - 6;
+  const gap = Math.floor((W - 40) / cats.length);
+  const baseY = H - 30;
+
+  cats.forEach(([k,v], i) => {
+    const barH = Math.max(4, (v/max) * (baseY - 20));
+    const x = 20 + i * gap + (gap - barW)/2;
+    const y = baseY - barH;
+    const color = CAT_COLORS[k];
+
+    // Glow
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+
+    // Bar
+    const grad = ctx.createLinearGradient(0, y, 0, baseY);
+    grad.addColorStop(0, color);
+    grad.addColorStop(1, color + '44');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, [3,3,0,0]);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Label
+    ctx.fillStyle = color;
+    ctx.font = `bold ${Math.min(9, barW*0.5)}px "Share Tech Mono"`;
+    ctx.textAlign = 'center';
+    ctx.fillText(k.substring(0,3).toUpperCase(), x + barW/2, baseY + 14);
+
+    // Value
+    if (v > 0) {
+      ctx.fillStyle = 'rgba(200,232,255,0.8)';
+      ctx.font = `bold 9px "Share Tech Mono"`;
+      ctx.fillText(v, x + barW/2, y - 4);
+    }
+  });
+
+  // Baseline
+  ctx.beginPath();
+  ctx.moveTo(16, baseY);
+  ctx.lineTo(W-16, baseY);
+  ctx.strokeStyle = 'rgba(0,245,255,0.15)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+// ====== SCREENS ======
+function switchScreen(name, navEl) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  navEl.classList.add('active');
+  if (name === 'stats') { updateStats(); }
+  if (name === 'profile') { loadProfileUI(); }
+}
+
+// ====== MODAL ======
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  document.getElementById('q-name').focus();
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function submitQuest() {
+  const name = document.getElementById('q-name').value.trim();
+  const xp   = parseInt(document.getElementById('q-xp').value) || 20;
+  const cat  = document.getElementById('q-cat').value;
+  const time = parseInt(document.getElementById('q-time').value) || 30;
+  const unit = parseInt(document.getElementById('q-unit').value);
+  if (!name) { document.getElementById('q-name').focus(); return; }
+
+  const secs = time * unit;
+  addQuest(name, xp, cat, secs);
+  closeModal();
+  document.getElementById('q-name').value = '';
+  document.getElementById('q-xp').value = '';
+  document.getElementById('q-time').value = '';
+}
+
+// ====== QUESTS ======
+function addQuest(name, xp, cat, totalSecs) {
+  const id = ++questIdCounter;
+  const quest = { id, name, xp, cat, totalSecs, remainSecs: totalSecs };
+  quests.push(quest);
+  renderQuestCard(quest);
+  startTimer(quest);
+  saveState();
+}
+
+function renderQuestCard(quest) {
+  const grid = document.getElementById('quests-grid');
+  const catKey = quest.cat.toLowerCase().replace(' ','');
+  const div = document.createElement('div');
+  div.className = 'quest-card';
+  div.id = 'quest-' + quest.id;
+  div.innerHTML = `
+    <div class="glow-line glow-${catKey}"></div>
+    <div class="quest-header">
+      <div class="quest-name">${quest.name}</div>
+      <div class="quest-xp">+${quest.xp} XP</div>
+    </div>
+    <div class="quest-meta">
+      <span class="cat-badge cat-${catKey}">${quest.cat}</span>
+      <span class="quest-timer" id="timer-${quest.id}">⏱ ${formatTime(quest.remainSecs)}</span>
+    </div>
+    <div class="timer-bar-outer">
+      <div class="timer-bar-inner" id="tbar-${quest.id}" style="width:100%;background:${CAT_COLORS[quest.cat]}"></div>
+    </div>
+    <div class="quest-actions">
+      <button class="btn btn-complete" onclick="completeQuest(${quest.id})">✓ COMPLETE</button>
+      <button class="btn btn-fail" onclick="failQuest(${quest.id})">✕ FAIL</button>
+    </div>
+  `;
+  grid.insertBefore(div, grid.firstChild);
+}
+
+function formatTime(secs) {
+  if (secs >= 3600) return `${Math.floor(secs/3600)}h ${Math.floor((secs%3600)/60)}m`;
+  if (secs >= 60)   return `${Math.floor(secs/60)}m ${secs%60}s`;
+  return `${secs}s`;
+}
+
+function startTimer(quest) {
+  const interval = setInterval(() => {
+    const q = quests.find(x => x.id === quest.id);
+    if (!q) { clearInterval(interval); return; }
+
+    q.remainSecs--;
+    saveState();
+
+    const timerEl = document.getElementById(`timer-${q.id}`);
+    const barEl   = document.getElementById(`tbar-${q.id}`);
+    if (!timerEl) { clearInterval(interval); return; }
+
+    const pct = (q.remainSecs / q.totalSecs) * 100;
+    timerEl.textContent = `⏱ ${formatTime(q.remainSecs)}`;
+
+    // Color shift
+    if (pct < 25) {
+      timerEl.classList.add('urgent');
+      if (barEl) barEl.style.background = '#ff2244';
+    } else if (pct < 50) {
+      if (barEl) barEl.style.background = '#ffa726';
+    }
+    if (barEl) barEl.style.width = pct + '%';
+
+    if (q.remainSecs <= 0) {
+      clearInterval(interval);
+      autoFailQuest(q.id);
+    }
+  }, 1000);
+  quest._interval = interval;
+}
+
+function removeQuestCard(id) {
+  const el = document.getElementById('quest-' + id);
+  if (el) {
+    el.style.transition = 'all 0.4s ease';
+    el.style.transform = 'scale(0.9)';
+    el.style.opacity = '0';
+    el.style.maxHeight = el.offsetHeight + 'px';
+    setTimeout(() => {
+      el.style.maxHeight = '0';
+      el.style.padding = '0';
+      el.style.margin = '0';
+      setTimeout(() => el.remove(), 300);
+    }, 300);
+  }
+  const qi = quests.findIndex(q => q.id === id);
+  if (qi !== -1) {
+    if (quests[qi]._interval) clearInterval(quests[qi]._interval);
+    quests.splice(qi, 1);
+  }
+  if (quests.length === 0) showEmpty();
+  saveState();
+}
+
+function showEmpty() {
+  const grid = document.getElementById('quests-grid');
+  if (!document.getElementById('empty-state')) {
+    const e = document.createElement('div');
+    e.className = 'empty-state'; e.id = 'empty-state';
+    e.innerHTML = '<div class="icon">⚔️</div><p>NO ACTIVE QUESTS<br>PRESS + TO ADD ONE</p>';
+    grid.appendChild(e);
+  }
+}
+
+function hideEmpty() {
+  const e = document.getElementById('empty-state');
+  if (e) e.remove();
+}
+
+function completeQuest(id) {
+  const q = quests.find(x => x.id === id);
+  if (!q) return;
+  showXpPop(q.xp, id);
+  addXP(q.xp);
+  state.completed++;
+  state.streak++;
+  state.totalXP += q.xp;
+  state.cats[q.cat] = (state.cats[q.cat] || 0) + 1;
+  flashCard(id, '#00ff88');
+  removeQuestCard(id);
+  saveState();
+  updateHeader();
+}
+
+function failQuest(id) {
+  const q = quests.find(x => x.id === id);
+  if (!q) return;
+  const pen = Math.floor(q.xp * 0.5);
+  showXpPop(-pen, id, true);
+  addXP(-pen);
+  state.failed++;
+  state.streak = 0;
+  flashCard(id, '#ff2244');
+  removeQuestCard(id);
+  saveState();
+  updateHeader();
+}
+
+function autoFailQuest(id) {
+  const q = quests.find(x => x.id === id);
+  if (!q) return;
+  const pen = Math.floor(q.xp * 0.3);
+  addXP(-pen);
+  state.failed++;
+  state.streak = 0;
+  flashCard(id, '#ff2244');
+  setTimeout(() => removeQuestCard(id), 600);
+  saveState();
+  updateHeader();
+}
+
+function flashCard(id, color) {
+  const el = document.getElementById('quest-' + id);
+  if (!el) return;
+  el.style.boxShadow = `0 0 30px ${color}`;
+  el.style.borderColor = color;
+  setTimeout(() => {
+    if (el) { el.style.boxShadow = ''; el.style.borderColor = ''; }
+  }, 500);
+}
+
+// ====== XP SYSTEM ======
+function addXP(amount) {
+  state.xp = Math.max(0, state.xp + amount);
+  const needed = xpNeeded(state.level);
+  if (state.xp >= needed) {
+    state.xp -= needed;
+    state.level++;
+    triggerLevelUp();
+  }
+  updateHeader();
+}
+
+function triggerLevelUp() {
+  document.getElementById('lvup-num').textContent = state.level;
+  const overlay = document.getElementById('levelup-overlay');
+  overlay.classList.remove('show');
+  void overlay.offsetWidth;
+  overlay.classList.add('show');
+  setTimeout(() => overlay.classList.remove('show'), 2800);
+  playLevelUpSound();
+}
+
+// ====== AUDIO ======
+function playLevelUpSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.25, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+  } catch(e) {}
+}
+
+// ====== XP POP ======
+function showXpPop(amount, questId, isFail = false) {
+  const el = document.getElementById('quest-' + questId);
+  let x = window.innerWidth / 2;
+  let y = window.innerHeight / 2;
+  if (el) {
+    const r = el.getBoundingClientRect();
+    x = r.left + r.width / 2;
+    y = r.top + 20;
+  }
+  const pop = document.createElement('div');
+  pop.className = 'xp-pop';
+  pop.style.left = x + 'px';
+  pop.style.top = y + 'px';
+  pop.style.color = isFail ? '#ff2244' : '#ffd700';
+  pop.style.textShadow = `0 0 10px ${isFail ? '#ff2244' : '#ffd700'}`;
+  pop.textContent = (amount >= 0 ? '+' : '') + amount + ' XP';
+  document.body.appendChild(pop);
+  setTimeout(() => pop.remove(), 1300);
+}
+
+// ====== PROFILE ======
+function saveProfile() {
+  state.profile.name   = document.getElementById('p-name').value.trim() || 'UNKNOWN HUNTER';
+  state.profile.age    = document.getElementById('p-age').value;
+  state.profile.gender = document.getElementById('p-gender').value;
+  saveState();
+  loadProfileUI();
+}
+
+function loadProfileUI() {
+  const p = state.profile;
+  document.getElementById('p-name').value   = p.name || '';
+  document.getElementById('p-age').value    = p.age || '';
+  document.getElementById('p-gender').value = p.gender || '';
+
+  const displayName = p.name || 'UNKNOWN HUNTER';
+  document.getElementById('profile-name-display').textContent = displayName;
+
+  const sub = [p.gender, p.age ? 'AGE ' + p.age : ''].filter(Boolean).join(' · ');
+  document.getElementById('profile-sub-display').textContent = sub ? `— ${sub} —` : '— UNRANKED —';
+
+  const r = getRank(state.level);
+  const rb = document.getElementById('rank-big');
+  rb.textContent = r.rank;
+  rb.style.color = r.color;
+  rb.style.textShadow = `0 0 20px ${r.color}, 0 0 40px ${r.color}55`;
+
+  if (p.avatar) {
+    document.getElementById('avatar-display').outerHTML =
+      `<img id="avatar-display" class="avatar-img" src="${p.avatar}" alt="avatar">`;
+  }
+}
+
+// ====== AVATAR UPLOAD ======
+document.getElementById('avatar-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    state.profile.avatar = ev.target.result;
+    saveState();
+    const old = document.getElementById('avatar-display');
+    if (old.tagName === 'DIV') {
+      old.outerHTML = `<img id="avatar-display" class="avatar-img" src="${ev.target.result}" alt="avatar">`;
+    } else {
+      old.src = ev.target.result;
+    }
+  };
+  reader.readAsDataURL(file);
+});
+
+// ====== DEFAULT QUESTS ======
+function loadDefaultQuests() {
+  if (quests.length > 0) {
+    quests.forEach(q => { renderQuestCard(q); startTimer(q); });
+    return;
+  }
+  const defaults = [
+    { name: 'Morning Study Session', xp: 40, cat: 'Mind', secs: 60 * 45 },
+    { name: 'Full Body Workout', xp: 50, cat: 'Body', secs: 60 * 60 },
+    { name: 'Code for 1 Hour', xp: 45, cat: 'Skills', secs: 60 * 60 },
+    { name: 'No Phone for 2 Hours', xp: 35, cat: 'Discipline', secs: 60 * 120 },
+    { name: 'Read 20 Pages', xp: 25, cat: 'Personal', secs: 60 * 30 },
+    { name: 'Check In With a Friend', xp: 20, cat: 'Social', secs: 60 * 15 },
+  ];
+  defaults.forEach(d => addQuest(d.name, d.xp, d.cat, d.secs));
+}
+
+// ====== INIT ======
+(function init() {
+  loadState();
+  updateHeader();
+  loadDefaultQuests();
+  if (quests.length === 0) showEmpty();
+
+  // Resize chart when visible
+  window.addEventListener('resize', () => {
+    if (document.getElementById('screen-stats').classList.contains('active')) renderChart();
+  });
+})();
+</script>
+</body>
+</html>
